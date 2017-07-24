@@ -1,5 +1,5 @@
 -- usage:
---     encrypt (Key [_I, _II, _III] "AAA") "PLAINTEXT"
+--     encrypt (Key [_I, _II, _III] "AAA" "AAA") "PLAINTEXT"
 
 import Data.Map (Map, fromList, toList, (!))
 import Data.Tuple (swap)
@@ -8,7 +8,7 @@ import Debug.Trace
 
 data Key = Key {
     wheelOrder :: [Wheel],
-    --ringSetting :: String,
+    ringSetting :: String,
     basicWheelSetting :: String
     --crossPlugging :: [String]
 } deriving (Show)
@@ -17,7 +17,8 @@ data Wheel = Wheel {
     wiring :: Map Char Char,
     notch :: String,
     turnover :: String,
-    startPosition :: Char
+    startPosition :: Char,
+    ringOffset :: Char
 } deriving (Show)
 
 data Enigma = Enigma {
@@ -64,10 +65,10 @@ makeWiring :: String -> Map Char Char
 makeWiring = fromList . zip ['A'..'Z']
 
 makeWheel :: String -> String -> String -> Wheel
-makeWheel wiring@(startPosition:_) notch turnover = Wheel (makeWiring wiring) notch turnover startPosition
+makeWheel wiring@(startPosition:_) notch turnover = Wheel (makeWiring wiring) notch turnover startPosition 'A'
 
-setWheel :: Wheel -> Char -> Wheel
-setWheel wheel startPosition = wheel { startPosition = startPosition }
+setWheel :: Wheel -> Char -> Char -> Wheel
+setWheel wheel startPosition ringOffset = wheel { startPosition = startPosition, ringOffset = ringOffset }
 
 inv :: Wheel -> Wheel
 inv wheel = wheel { wiring = fromList . map swap $ toList $ wiring wheel }
@@ -93,23 +94,24 @@ encrypt' enigma@(Enigma etw l m r ukw) n (x:xs) =
     . translate (-j) . transform m . translate j
     . translate (-i) . transform r . translate i) x : encrypt' enigma (n + 1) xs
     where
-        i = startIndex r + n
-        j = startIndex m + turnoverCount 1 i r
-        j' = startIndex m + turnoverCount 2 i r
-        k = startIndex l + turnoverCount 0 j' m
+        i = startIndex r - ringIndex r + n
+        j = startIndex m - ringIndex m + turnoverCount 1 i r
+        j' = startIndex m - ringIndex m + turnoverCount 2 i r
+        k = startIndex l - ringIndex l + turnoverCount 0 j' m
         turnoverCount offset ind wheel =
             sum [(ind - offset + (revIndex t)) `div` lettersCount - (if startIndex wheel > index t then 1 else 0) | t <- turnover wheel]
         startIndex = index . startPosition
+        ringIndex = index . ringOffset
 
 encrypt :: Key -> String -> String
-encrypt (Key (wheelL:wheelM:wheelR:_) (startL:startM:startR:_)) = encrypt' (Enigma etw l m r ukw) 1
+encrypt (Key (wheelL:wheelM:wheelR:_) (ringL:ringM:ringR:_) (startL:startM:startR:_)) = encrypt' (Enigma etw l m r ukw) 1
     where
-        etw = setWheel _ETW 'A'
-        l = setWheel wheelL startL
-        m = setWheel wheelM startM
-        r = setWheel wheelR startR
-        ukw = setWheel _UKWB 'A'
+        etw = setWheel _ETW 'A' 'A'
+        l = setWheel wheelL startL ringL
+        m = setWheel wheelM startM ringM
+        r = setWheel wheelR startR ringR
+        ukw = setWheel _UKWB 'A' 'A'
 
 
---  encrypt (Key [_I, _II, _III] "CFA") (take 100 $ repeat 'A')
+--  encrypt (Key [_I, _II, _III] "AAA" "CFA") (take 100 $ repeat 'A')
 --  SQPEUGJRCXZWPFYIYYBWLJEWROUVKPOZTCEUWTFJZQWPBQLOTTSRMDFLGXBXZRYQKDGJRZEZMDHJNQYPDJWCJFJLFNTRSNCNLGSK
