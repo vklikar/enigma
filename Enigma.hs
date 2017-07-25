@@ -1,7 +1,7 @@
 -- usage:
---     encrypt (Key [_I, _II, _III] "AAA" "AAA") "PLAINTEXT"
+--     encrypt (Key [_I, _II, _III] "AAA" "AAA" []) "PLAINTEXT"
 
-import Data.Map (Map, fromList, toList, (!))
+import Data.Map (Map, fromList, toList, (!), union)
 import Data.Tuple (swap)
 import Data.Char (ord)
 import Debug.Trace
@@ -9,8 +9,8 @@ import Debug.Trace
 data Key = Key {
     wheelOrder :: [Wheel],
     ringSetting :: String,
-    basicWheelSetting :: String
-    --crossPlugging :: [String]
+    basicWheelSetting :: String,
+    crossPlugging :: [String]
 } deriving (Show)
 
 data Wheel = Wheel {
@@ -22,6 +22,7 @@ data Wheel = Wheel {
 } deriving (Show)
 
 data Enigma = Enigma {
+    plugboard :: Map Char Char,
     entryWheel :: Wheel,
     leftWheel :: Wheel,
     middleWheel :: Wheel,
@@ -67,11 +68,18 @@ makeWiring = fromList . zip ['A'..'Z']
 makeWheel :: String -> String -> String -> Wheel
 makeWheel wiring@(startPosition:_) notch turnover = Wheel (makeWiring wiring) notch turnover startPosition 'A'
 
+makePlugboard :: [String] -> Map Char Char
+makePlugboard xs = (fromList pairs) `union` (fromList $ map swap pairs) `union` makeWiring letters
+    where pairs = [(x, y) | (x:y:_) <- xs]
+
 setWheel :: Wheel -> Char -> Char -> Wheel
 setWheel wheel startPosition ringOffset = wheel { startPosition = startPosition, ringOffset = ringOffset }
 
 inv :: Wheel -> Wheel
-inv wheel = wheel { wiring = fromList . map swap $ toList $ wiring wheel }
+inv wheel = wheel { wiring = inv' $ wiring wheel }
+
+inv' :: Map Char Char -> Map Char Char
+inv' = fromList . map swap . toList
 
 rotate :: Int -> [a] -> [a]
 rotate n xs = take (length xs) $ drop (n `mod` length xs) $ cycle xs
@@ -84,15 +92,17 @@ transform wheel = (!) (wiring wheel)
 
 encrypt':: Enigma -> Int -> String -> String
 encrypt' _ _ [] = []
-encrypt' enigma@(Enigma etw l m r ukw) n (x:xs) =
+encrypt' enigma@(Enigma p etw l m r ukw) n (x:xs) =
     -- trace ("n: " ++ (show' n) ++ ", start: " ++ (show' $ index $ startPosition r) ++ ", mod: " ++ (show' $ i `mod` 26) ++ ",       i: " ++ (show' i) ++ " (" ++ show (letters !! (i `mod` 26)) ++ "),       j: " ++ (show' j) ++ " (" ++ show (letters !! (j `mod` 26)) ++ "),       k: " ++ (show' k) ++ " (" ++ show (letters !! (k `mod` 26)) ++ ")")$
-    ( translate (-i) . transform (inv r) . translate i
+    ( (!) p
+    . translate (-i) . transform (inv r) . translate i
     . translate (-j) . transform (inv m) . translate j
     . translate (-k) . transform (inv l) . translate k
     . transform ukw
     . translate (-k) . transform l . translate k
     . translate (-j) . transform m . translate j
-    . translate (-i) . transform r . translate i) x : encrypt' enigma (n + 1) xs
+    . translate (-i) . transform r . translate i
+    . (!) (inv' p)) x : encrypt' enigma (n + 1) xs
     where
         i = startIndex r - ringIndex r + n
         j = startIndex m - ringIndex m + turnoverCount 1 i r
@@ -104,8 +114,10 @@ encrypt' enigma@(Enigma etw l m r ukw) n (x:xs) =
         ringIndex = index . ringOffset
 
 encrypt :: Key -> String -> String
-encrypt (Key (wheelL:wheelM:wheelR:_) (ringL:ringM:ringR:_) (startL:startM:startR:_)) = encrypt' (Enigma etw l m r ukw) 1
+encrypt (Key (wheelL:wheelM:wheelR:_) (ringL:ringM:ringR:_) (startL:startM:startR:_) crossPlugging) =
+    encrypt' (Enigma p etw l m r ukw) 1
     where
+        p = makePlugboard crossPlugging
         etw = setWheel _ETW 'A' 'A'
         l = setWheel wheelL startL ringL
         m = setWheel wheelM startM ringM
@@ -113,5 +125,5 @@ encrypt (Key (wheelL:wheelM:wheelR:_) (ringL:ringM:ringR:_) (startL:startM:start
         ukw = setWheel _UKWB 'A' 'A'
 
 
---  encrypt (Key [_I, _II, _III] "AAA" "CFA") (take 100 $ repeat 'A')
+--  encrypt (Key [_I, _II, _III] "AAA" "CFA" []) (take 100 $ repeat 'A')
 --  SQPEUGJRCXZWPFYIYYBWLJEWROUVKPOZTCEUWTFJZQWPBQLOTTSRMDFLGXBXZRYQKDGJRZEZMDHJNQYPDJWCJFJLFNTRSNCNLGSK
