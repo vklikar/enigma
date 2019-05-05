@@ -1,5 +1,6 @@
 -- usage:
 --     encrypt (Key [_I, _II, _III] "AAA" "AAA" []) "PLAINTEXT"
+module Enigma where
 
 import Data.Map (Map, fromList, toList, (!), union)
 import Data.Tuple (swap)
