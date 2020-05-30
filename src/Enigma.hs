@@ -145,12 +145,25 @@ encrypt' enigma@(Enigma az p etw l m r ukw) n (x:xs) =
         -- p2 = (!) p r6
         -- steps = [[x], [p1], [r1, r2, r3], [m1, m2, m3], [l1, l2, l3], [u1], [l4, l5, l6], [m4, m5, m6], [r4, r5, r6], [p2]]
         -- -------------------------------------------------------------------
+        -- the current number of rotations for R
         i = startIndex r - ringIndex r + n
-        j = startIndex m - ringIndex m + turnoverCount 1 i r
-        j' = startIndex m - ringIndex m + turnoverCount 2 i r
-        k = startIndex l - ringIndex l + turnoverCount 0 j' m
-        turnoverCount offset ind wheel =
-            sum [(1 + ind - offset + revIndex az t) `div` length az - (if startIndex wheel > index az t then 1 else 0) | t <- turnover wheel]
+        -- the current number of rotations for M
+        j = startIndex m - ringIndex m + mTurnCount i r m
+        -- the number of rotations for M in the previous step
+        j' = startIndex m - ringIndex m + mTurnCount (i-1) r m
+        -- the current number of rotations for L
+        k = startIndex l - ringIndex l + lTurnCount j' m
+
+        -- calculate the number of rotations for M from the start index
+        mTurnCount ind r m = foldl (mTurnCount' r m) 0 [(startIndex r)..(ind-1)]
+        mTurnCount' r m x rIndex =
+            sum [if notchReached rIndex tr || notchReached ((startIndex m) + x) tm then (x + 1) else x | tr <- turnover r, tm <- turnover m]
+        notchReached ind turnoverChar = (ind + revIndex az turnoverChar + 1) `mod` length az == 0
+
+        -- calculate the number of rotations for L from the start index
+        lTurnCount ind wheel =
+            sum [(ind + revIndex az t + 1) `div` length az - (if startIndex wheel > index az t then 1 else 0) | t <- turnover wheel]
+
         startIndex = index az . startPosition
         ringIndex = index az . ringOffset
 

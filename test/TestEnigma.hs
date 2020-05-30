@@ -21,15 +21,6 @@ referenceWheel = Wheel {
     ringOffset = 'A'
     }
 
-emptyPlugboard = makePlugboard "ABCD" []
-emptyWheel = makeWheel "ABCD" "ABCD" "" ""
-emptyWheelWithNotch = makeWheel "ABCD" "ABCD" "" "D"
-reverseWheel = makeWheel "ABCD" "DCBA" "" ""
-oneChangeWheel = makeWheel "ABCD" "ABDC" "" ""
-rightWheelEnigma = Enigma "ABCD" emptyPlugboard emptyWheel emptyWheel emptyWheel oneChangeWheel reverseWheel
-middleWheelEnigma = Enigma "ABCD" emptyPlugboard emptyWheel emptyWheel oneChangeWheel emptyWheelWithNotch reverseWheel
-leftWheelEnigma = Enigma "ABCD" emptyPlugboard emptyWheel oneChangeWheel emptyWheelWithNotch emptyWheelWithNotch reverseWheel
-
 indexTest :: Test
 indexTest = TestList [
     TestCase $ assertEqual "" 0 (index ['A'..'F'] 'A'),
@@ -146,32 +137,39 @@ transformTest = TestList [
         ) 'E')
     ]
 
-encryptRightWheelTest :: Test
-encryptRightWheelTest = TestList [
-    TestCase $ assertEqual ""
-        "DCDCDCDCDCDC"
-        (encrypt' rightWheelEnigma 1 "AAAAAAAAAAAA")
-    ]
-
-encryptMiddleWheelTest :: Test
-encryptMiddleWheelTest = TestList [
-    TestCase $ assertEqual ""
-        "CCCDDDDCCCCDDDDCCCCDDDDCCCCDDDDCCCCDDDDCCCCDDDDCCC"
-        (encrypt' middleWheelEnigma 1 (replicate 50 'A'))
-    ]
-
-encryptLeftWheelTest :: Test
-encryptLeftWheelTest = TestList [
-    TestCase $ assertEqual ""
-        "CCCCCCCCCCCCDDDDDDDDDDDDDDDDCCCCCCCCCCCCCCCCDDDDDD"
-        (encrypt' leftWheelEnigma 1 (replicate 50 'A'))
-    ]
-
 enigmaM3Test :: Test
 enigmaM3Test = TestList [
     TestCase $ assertEqual ""
         "SQPEUGJRCXZWPFYIYYBWLOEWROUVKPOZTCEUWTFJZQWPBQLDTTSRMDFLGXBXZRYQKDGJRZEZMKHJNQYPDJWCJFJLFNTRSNCNLGSS"
         (encrypt (Key [_I, _II, _III] "AAA" "CFA" []) (replicate 100 'A'))
+    ]
+
+enigmaM3DoubleStepTest :: Test
+enigmaM3DoubleStepTest = TestList [
+    TestCase $ assertEqual ""
+        "EQI"
+        (encrypt (Key [_I, _II, _III] "AAA" "ADU" []) "AAA")
+    ]
+
+enigmaM3DoubleStepStartMTest :: Test
+enigmaM3DoubleStepStartMTest = TestList [
+    TestCase $ assertEqual ""
+        "FJ"
+        (encrypt (Key [_I, _II, _III] "AAA" "AEA" []) "AA")
+    ]
+
+enigmaM3DoubleStepStartMRTest :: Test
+enigmaM3DoubleStepStartMRTest = TestList [
+    TestCase $ assertEqual ""
+        "GI"
+        (encrypt (Key [_I, _II, _III] "AAA" "AEV" []) "AA")
+    ]
+
+enigmaM3DoubleStepTurnedLTest :: Test
+enigmaM3DoubleStepTurnedLTest = TestList [
+    TestCase $ assertEqual ""
+        "DBBZZLXLCYZXIFGWFDZEEQIBMGFJBWZFCKPFMGBXQCIVIBBRNC"
+        (encrypt (Key [_I, _II, _III] "AAA" "ADA" []) (replicate 50 'A'))
     ]
 
 main :: IO Counts
@@ -186,8 +184,9 @@ main = runTestTT $ TestList [
     rotateTest,
     translateTest,
     transformTest,
-    encryptRightWheelTest,
-    encryptMiddleWheelTest,
-    encryptLeftWheelTest,
-    enigmaM3Test
+    enigmaM3Test,
+    enigmaM3DoubleStepTest,
+    enigmaM3DoubleStepStartMTest,
+    enigmaM3DoubleStepStartMRTest,
+    enigmaM3DoubleStepTurnedLTest
     ]
